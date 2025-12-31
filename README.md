@@ -7,7 +7,7 @@ https://github.com/user-attachments/assets/9d9c3c20-e3fd-47f2-a80e-7bf3889e88a8
 - **Multi-Provider AI** - GPT, Claude, and Gemini models in one interface
 - **Themes** - Color and font customization
 - **System Prompt Library** - Save and switch between custom "Cores"
-- **Web Search** - Grounded responses with real-time information
+- **Web Search** - Web search tool calling support
 
 ### Upcoming Features
 
