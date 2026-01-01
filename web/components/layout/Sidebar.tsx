@@ -7,7 +7,7 @@ import {
   Search,
   Palette,
   Settings,
-  UserPlus,
+  LogIn,
   CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -288,7 +288,7 @@ export function Sidebar({
                 >
                   {isAnonymousUser ? (
                     <>
-                      <UserPlus className="w-4 h-4 shrink-0" />
+                      <LogIn className="w-4 h-4 shrink-0" />
                       <span className="font-medium text-sm">Sign up</span>
                     </>
                   ) : isSignedInNonSubscriber ? (
@@ -512,7 +512,7 @@ export function Sidebar({
                   style={{ color: "var(--color-text-muted)" }}
                 >
                   {isAnonymousUser ? (
-                    <UserPlus className="w-4 h-4" />
+                    <LogIn className="w-4 h-4" />
                   ) : isSignedInNonSubscriber ? (
                     <CreditCard className="w-4 h-4" />
                   ) : (
