@@ -14,6 +14,8 @@ import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { PostHogPageView } from "@/components/providers/PostHogPageView";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { CoreEditorProviderWrapper } from "@/components/providers/CoreEditorProviderWrapper";
 import {
@@ -188,19 +190,22 @@ export default async function RootLayout({
       </head>
       <body>
         <ConvexClientProvider>
-          <ThemeProvider initialThemeId={themeId} initialFontId={fontId}>
-            <CoreEditorProviderWrapper>{children}</CoreEditorProviderWrapper>
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                style: {
-                  background: "var(--color-background-elevated)",
-                  color: "var(--color-text-primary)",
-                  border: "1px solid var(--color-border-default)",
-                },
-              }}
-            />
-          </ThemeProvider>
+          <PostHogProvider>
+            <PostHogPageView />
+            <ThemeProvider initialThemeId={themeId} initialFontId={fontId}>
+              <CoreEditorProviderWrapper>{children}</CoreEditorProviderWrapper>
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  style: {
+                    background: "var(--color-background-elevated)",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border-default)",
+                  },
+                }}
+              />
+            </ThemeProvider>
+          </PostHogProvider>
         </ConvexClientProvider>
         <SpeedInsights />
       </body>

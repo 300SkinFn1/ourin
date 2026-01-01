@@ -16,6 +16,7 @@ import { DropZoneOverlay } from "./DropZoneOverlay";
 import { useOurinChat } from "@/hooks/useOurinChat";
 import { useCores } from "@/hooks/useCores";
 import { useFileDrop } from "@/hooks/useFileDrop";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { getModelInfo, FREE_MODEL_ID } from "@/lib/models";
 import { setCookie } from "@/lib/cookies";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -70,6 +71,7 @@ export function ChatArea({
   messageListRef,
 }: ChatAreaProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
+  const analytics = useAnalytics();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Internal ref for ChatInput - use provided ref or create our own
@@ -479,13 +481,34 @@ export function ChatArea({
         { role: "user", parts },
         { webSearchEnabled: options?.webSearchEnabled }
       );
+
+      // Track analytics
+      analytics.trackMessageSent({
+        conversationId: conversationId ?? undefined,
+        model: selectedModel,
+        provider: modelInfo.provider,
+        reasoningLevel,
+        reasoningEnabled:
+          reasoningLevel !== undefined && reasoningLevel !== "off",
+        webSearchEnabled: options?.webSearchEnabled,
+        attachmentsCount: attachments.length,
+        messageLength: content.length,
+      });
     },
-    [sendMessage]
+    [
+      sendMessage,
+      analytics,
+      conversationId,
+      selectedModel,
+      modelInfo.provider,
+      reasoningLevel,
+    ]
   );
 
   const handleStop = useCallback(() => {
     stop();
-  }, [stop]);
+    analytics.trackStreamStopped(conversationId ?? "", "user_abort");
+  }, [stop, analytics, conversationId]);
 
   const handleRegenerate = useCallback(
     (
@@ -505,8 +528,24 @@ export function ChatArea({
       }
 
       regenerate({ messageId, model, reasoningLevel: reasoningLevelOverride });
+
+      const effectiveModel = model ?? selectedModel;
+      analytics.trackMessageRegenerated({
+        conversationId: conversationId ?? undefined,
+        model: effectiveModel,
+        provider: getModelInfo(effectiveModel).provider,
+        reasoningLevel: reasoningLevelOverride ?? reasoningLevel,
+      });
     },
-    [regenerate, selectedModel, onModelChange, onReasoningLevelChange]
+    [
+      regenerate,
+      selectedModel,
+      onModelChange,
+      onReasoningLevelChange,
+      analytics,
+      conversationId,
+      reasoningLevel,
+    ]
   );
 
   const handleEdit = useCallback(
@@ -535,6 +574,17 @@ export function ChatArea({
       }
 
       await editAndResend(messageId, newContent, attachments, options);
+
+      const effectiveModel = options?.model ?? selectedModel;
+      analytics.trackMessageEdited({
+        conversationId: conversationId ?? undefined,
+        model: effectiveModel,
+        provider: getModelInfo(effectiveModel).provider,
+        reasoningLevel: options?.reasoningLevel ?? reasoningLevel,
+        webSearchEnabled: options?.webSearchEnabled,
+        attachmentsCount: attachments.length,
+        messageLength: newContent.length,
+      });
     },
     [
       editAndResend,
@@ -542,17 +592,24 @@ export function ChatArea({
       onModelChange,
       onReasoningLevelChange,
       onWebSearchEnabledChange,
+      analytics,
+      conversationId,
+      reasoningLevel,
     ]
   );
 
   const handleFork = useCallback(
     async (messageId: string) => {
       const newConversationId = await forkConversation(messageId);
-      if (newConversationId && onFork) {
-        onFork(newConversationId);
+      if (newConversationId) {
+        analytics.trackConversationForked(
+          conversationId ?? "",
+          newConversationId
+        );
+        onFork?.(newConversationId);
       }
     },
-    [forkConversation, onFork]
+    [forkConversation, onFork, analytics, conversationId]
   );
 
   const isLoading = status === "submitted" || status === "streaming";

@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { SettingsSection, SettingsDivider } from "../SettingsModal";
 import { useProductionMode } from "@/hooks/useProductionMode";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { IS_SELF_HOSTING_CLIENT } from "@/lib/config";
 
 // Billing config type
@@ -68,6 +69,7 @@ interface AuthFormProps {
 
 function AuthForm({ signUpStep, setSignUpStep, flow, setFlow }: AuthFormProps) {
   const { signIn } = useAuthActions();
+  const analytics = useAnalytics();
 
   // Get current user to pass for account linking (anonymous -> real account)
   const { isAuthenticated } = useConvexAuth();
@@ -115,6 +117,7 @@ function AuthForm({ signUpStep, setSignUpStep, flow, setFlow }: AuthFormProps) {
           setLoading(false);
         } else {
           // Success
+          analytics.trackSignIn("email");
           toast.success("Welcome back!");
         }
       }
@@ -193,6 +196,10 @@ function AuthForm({ signUpStep, setSignUpStep, flow, setFlow }: AuthFormProps) {
         setLoading(false);
       } else {
         // Success: auth state changes, modal closes automatically
+        analytics.trackSignUp("email");
+        if (currentUser?.isAnonymous) {
+          analytics.trackAccountUpgraded();
+        }
         toast.success("Account created successfully!");
         setLoading(false);
       }
@@ -816,6 +823,7 @@ function AuthForm({ signUpStep, setSignUpStep, flow, setFlow }: AuthFormProps) {
 
 function AuthenticatedAccount() {
   const currentUser = useQuery(api.settings.getCurrentUser);
+  const analytics = useAnalytics();
   const { isSelfHosting, isLoading: isLoadingProductionMode } =
     useProductionMode();
 
@@ -873,6 +881,10 @@ function AuthenticatedAccount() {
 
   const handleSubscribe = async () => {
     setIsLoadingCheckout(true);
+    analytics.trackSubscriptionEvent({
+      tier: tierInfo?.tier ?? "free",
+      action: "checkout_started",
+    });
     try {
       const tokenResult = await generateChatToken();
       if (!tokenResult) {
@@ -931,6 +943,12 @@ function AuthenticatedAccount() {
 
   const handleBuyCredits = async () => {
     setIsLoadingBuyCredits(true);
+    analytics.trackSubscriptionEvent({
+      tier: tierInfo?.tier ?? "subscriber",
+      action: "credits_purchased",
+      creditsAmount: billingConfig.creditPackAmount ?? 20000,
+      priceCents: billingConfig.creditPackPriceCents ?? 2000,
+    });
     try {
       const tokenResult = await generateChatToken();
       if (!tokenResult) {
