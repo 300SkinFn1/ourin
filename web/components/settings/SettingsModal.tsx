@@ -356,9 +356,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Track previous state to detect successful sign-in/sign-up
   const wasNotFullyAuthRef = useRef(!isFullyAuthenticated);
+  const isMountedRef = useRef(true);
   const generateChatToken = useMutation(api.chatAuth.generateChatToken);
   const analytics = useAnalytics();
   const [isRedirectingToStripe, setIsRedirectingToStripe] = useState(false);
+
+  // Track mounted state to prevent state updates after unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Handle auth state changes - close for sign-in, redirect to Stripe for sign-up
   useEffect(() => {
@@ -377,6 +386,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               action: "checkout_started",
             });
             const tokenResult = await generateChatToken();
+            if (!isMountedRef.current) return;
             if (!tokenResult) {
               toast.error("Failed to authenticate. Please try again.");
               setIsRedirectingToStripe(false);
@@ -390,12 +400,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               },
               body: JSON.stringify({}),
             });
+            if (!isMountedRef.current) return;
             if (!response.ok)
               throw new Error("Failed to create checkout session");
             const { url } = await response.json();
             if (url) window.location.href = url;
           } catch (error) {
             console.error("Stripe redirect error:", error);
+            if (!isMountedRef.current) return;
             toast.error("Failed to redirect to checkout", {
               description: "Please click Subscribe to try again.",
             });
