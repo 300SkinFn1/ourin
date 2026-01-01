@@ -79,11 +79,15 @@ export function Sidebar({
   const isAnonymousUser = IS_SELF_HOSTING_CLIENT
     ? false
     : !isAuthenticated || currentUser?.isAnonymous;
+  // Must match SettingsModal's definition to ensure consistent behavior
+  const isFullyAuthenticated =
+    isAuthenticated && currentUser?.emailVerified && !currentUser?.isAnonymous;
   const isSubscriber = IS_SELF_HOSTING_CLIENT
     ? true
     : tierInfo?.tier === "subscriber";
+  // Use isFullyAuthenticated (not just !isAnonymousUser) to match SettingsModal logic
   const isSignedInNonSubscriber =
-    !IS_SELF_HOSTING_CLIENT && !isAnonymousUser && !isSubscriber;
+    !IS_SELF_HOSTING_CLIENT && isFullyAuthenticated && !isSubscriber;
 
   // Detect Mac vs Windows
   useEffect(() => {

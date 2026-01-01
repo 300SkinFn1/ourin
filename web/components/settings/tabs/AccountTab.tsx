@@ -200,6 +200,8 @@ function AuthForm({ signUpStep, setSignUpStep, flow, setFlow }: AuthFormProps) {
           analytics.trackAccountUpgraded();
         }
         toast.success("Account created!");
+        // Reset loading state in case Stripe redirect fails and user returns to form
+        setLoading(false);
         // Auth state will update, SettingsModal will handle Stripe redirect
       }
     } catch (err) {
