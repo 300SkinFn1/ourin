@@ -945,9 +945,7 @@ function AuthenticatedAccount() {
     setIsLoadingBuyCredits(true);
     analytics.trackSubscriptionEvent({
       tier: tierInfo?.tier ?? "subscriber",
-      action: "credits_purchased",
-      creditsAmount: billingConfig.creditPackAmount ?? 20000,
-      priceCents: billingConfig.creditPackPriceCents ?? 2000,
+      action: "checkout_started",
     });
     try {
       const tokenResult = await generateChatToken();

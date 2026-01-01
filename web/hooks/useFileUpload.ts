@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatFileSize, isImageFile } from "@/lib/utils";
 import { computeFileHash } from "@/lib/fileHash";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import type { Attachment } from "./useDraft";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -93,6 +94,7 @@ interface UseFileUploadReturn {
 
 export function useFileUpload(): UseFileUploadReturn {
   const convex = useConvex();
+  const analytics = useAnalytics();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveFileReference = useMutation(api.files.saveFileReference);
   const deleteFileMutation = useMutation(api.files.deleteFile);
@@ -150,6 +152,12 @@ export function useFileUpload(): UseFileUploadReturn {
           contentHash,
         });
 
+        analytics.trackFileUploaded(
+          fileCategory,
+          attachment.file.type,
+          attachment.file.size
+        );
+
         return {
           ...attachment,
           status: "ready",
@@ -165,7 +173,7 @@ export function useFileUpload(): UseFileUploadReturn {
         };
       }
     },
-    [generateUploadUrl, saveFileReference]
+    [generateUploadUrl, saveFileReference, analytics]
   );
 
   const processFile = useCallback(
