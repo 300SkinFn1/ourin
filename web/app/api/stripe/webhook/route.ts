@@ -3,6 +3,7 @@ import { stripe, WEBHOOK_SECRET, CREDIT_PACK_PRICE_ID } from "@/lib/stripe";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { IS_SELF_HOSTING } from "@/lib/config";
+import { trackServerEvent } from "@/lib/posthog-server";
 import Stripe from "stripe";
 
 /**
@@ -123,6 +124,13 @@ export async function POST(req: Request) {
           console.log(
             `Credit pack recorded for user ${userId}: ${config.creditPackAmount} credits`
           );
+
+          await trackServerEvent(userId, "subscription_event", {
+            tier: "subscriber",
+            action: "credits_purchased",
+            creditsAmount: config.creditPackAmount,
+            priceCents: price.unit_amount ?? 0,
+          });
           break;
         }
 
@@ -152,6 +160,11 @@ export async function POST(req: Request) {
           });
 
           console.log(`Subscription created for user ${userId}`);
+
+          await trackServerEvent(userId, "subscription_event", {
+            tier: "subscriber",
+            action: "subscription_created",
+          });
         }
         break;
       }
@@ -222,6 +235,15 @@ export async function POST(req: Request) {
         });
 
         console.log(`Subscription ${subscriptionId} canceled`);
+
+        // Try to get userId from subscription metadata
+        const canceledUserId = subscription.metadata?.userId;
+        if (canceledUserId) {
+          await trackServerEvent(canceledUserId, "subscription_event", {
+            tier: "subscriber",
+            action: "subscription_cancelled",
+          });
+        }
         break;
       }
 

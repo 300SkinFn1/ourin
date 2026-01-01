@@ -20,6 +20,7 @@ import {
 import { recordThemeUsage } from "@/components/command-palette/themeUsageTracker";
 import { getFontFamily } from "@/lib/fonts";
 import { setCookie, deleteCookie, getCookie } from "@/lib/cookies";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface ThemeContextValue {
   // Theme
@@ -51,6 +52,7 @@ export function ThemeProvider({
   initialThemeId = defaultTheme.id,
   initialFontId = "lato",
 }: ThemeProviderProps) {
+  const analytics = useAnalytics();
   const [themeId, setThemeId] = useState(initialThemeId);
   const [fontId, setFontId] = useState(initialFontId);
   const [customThemes, setCustomThemes] = useState<OurinTheme[]>([]);
@@ -155,6 +157,10 @@ export function ThemeProvider({
         setCustomThemeState(null);
         updateThemeCSS(newTheme);
         recordThemeUsage(newThemeId);
+        analytics.trackThemeChanged(
+          newThemeId,
+          newThemeId.startsWith("custom-")
+        );
         // Save to cookie
         setCookie("ourin-theme", newThemeId);
         // For custom themes, also save colors to cookie for SSR
@@ -170,7 +176,7 @@ export function ThemeProvider({
         }
       }
     },
-    [customThemes, updateThemeCSS]
+    [customThemes, updateThemeCSS, analytics]
   );
 
   // Set custom theme (for live preview)

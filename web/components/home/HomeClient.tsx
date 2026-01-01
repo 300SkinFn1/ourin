@@ -25,8 +25,9 @@ import { SettingsModal } from "@/components/settings/SettingsModal";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useKeybinds } from "@/hooks/useKeybinds";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { CoresProvider } from "@/contexts/CoresContext";
-import { FREE_MODEL_ID } from "@/lib/models";
+import { FREE_MODEL_ID, getModelInfo } from "@/lib/models";
 import { setCookie } from "@/lib/cookies";
 
 const SIDEBAR_COLLAPSED_COOKIE = "ourin-sidebar-collapsed";
@@ -66,6 +67,7 @@ export function HomeClient({
 }: HomeClientProps) {
   // Auth state for model restriction
   const { isAuthenticated } = useConvexAuth();
+  const analytics = useAnalytics();
   const wasAuthenticatedRef = useRef<boolean | null>(null);
 
   // Sidebar state - initialize from server-provided props (no flash)
@@ -213,11 +215,15 @@ export function HomeClient({
   }, []);
 
   // Handle new conversation creation - update URL without full navigation
-  const handleConversationCreate = useCallback((id: string) => {
-    setCurrentConversationId(id);
-    // Use replaceState to update URL without triggering re-render
-    window.history.replaceState(null, "", `/c/${id}`);
-  }, []);
+  const handleConversationCreate = useCallback(
+    (id: string) => {
+      setCurrentConversationId(id);
+      analytics.trackConversationCreated(id, selectedModel);
+      // Use replaceState to update URL without triggering re-render
+      window.history.replaceState(null, "", `/c/${id}`);
+    },
+    [analytics, selectedModel]
+  );
 
   // Handle new chat - update URL without full navigation
   const handleNewChat = useCallback(() => {
@@ -285,6 +291,21 @@ export function HomeClient({
     setShowSettings(true);
   }, []);
 
+  // Model change with analytics
+  const handleModelChange = useCallback(
+    (newModel: string) => {
+      if (newModel !== selectedModel) {
+        analytics.trackModelChanged(
+          selectedModel,
+          newModel,
+          getModelInfo(newModel).provider
+        );
+      }
+      setSelectedModel(newModel);
+    },
+    [selectedModel, analytics]
+  );
+
   // Get user's keybind configuration
   const keybinds = useKeybinds();
 
@@ -334,7 +355,7 @@ export function HomeClient({
         onConversationCreate={handleConversationCreate}
         onFork={handleFork}
         selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
+        onModelChange={handleModelChange}
         initialNewChatDraft={initialNewChatDraft}
         newChatResetKey={newChatResetKey}
         reasoningLevel={reasoningLevel}
