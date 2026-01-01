@@ -104,22 +104,6 @@ const SUBSCRIPTION_FEATURES = [
   },
 ];
 
-// Generic features for the sign-in panel
-const GENERIC_FEATURES = [
-  {
-    title: "All the best models",
-    description: "GPT, Claude, and Gemini models in one place",
-  },
-  {
-    title: "Secure and Open Source",
-    description: "Fully auditable source code, no need to trust a black box",
-  },
-  {
-    title: "Personalized experience",
-    description: "Custom themes, dynamic system prompting, and keybinds",
-  },
-];
-
 // Left side pricing panel component
 function PricingPanel({
   variant,
@@ -155,68 +139,41 @@ function PricingPanel({
           Ourin
         </h1>
         <p className="text-lg" style={{ color: "var(--color-text-secondary)" }}>
-          {isSignIn
-            ? "Your AI assistant, your way."
-            : "Your AI assistant, your way"}
+          Your AI assistant, your way
         </p>
       </div>
 
       {/* Features list */}
       <div className="z-10 relative space-y-5">
-        {isSignIn
-          ? // Generic features for sign-in
-            GENERIC_FEATURES.map((feature) => (
-              <div key={feature.title} className="flex items-start gap-3">
-                <div
-                  className="mt-[6px] rounded-full w-2 h-2 shrink-0"
-                  style={{ backgroundColor: "var(--color-accent-primary)" }}
-                />
-                <div>
-                  <h3
-                    className="font-medium text-sm"
-                    style={{ color: "var(--color-text-primary)" }}
-                  >
-                    {feature.title}
-                  </h3>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            ))
-          : // Pricing features
-            SUBSCRIPTION_FEATURES.map((feature) => (
-              <div key={feature.title} className="flex items-start gap-3">
-                <div
-                  className="flex flex-shrink-0 justify-center items-center mt-0.5 rounded w-6 h-6"
-                  style={{
-                    backgroundColor: "var(--color-accent-primary-muted)",
-                  }}
-                >
-                  <feature.icon
-                    className="w-3.5 h-3.5"
-                    style={{ color: "var(--color-accent-primary)" }}
-                  />
-                </div>
-                <div>
-                  <h3
-                    className="font-medium text-sm"
-                    style={{ color: "var(--color-text-primary)" }}
-                  >
-                    {feature.title}
-                  </h3>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            ))}
+        {SUBSCRIPTION_FEATURES.map((feature) => (
+          <div key={feature.title} className="flex items-start gap-3">
+            <div
+              className="flex flex-shrink-0 justify-center items-center mt-0.5 rounded w-6 h-6"
+              style={{
+                backgroundColor: "var(--color-accent-primary-muted)",
+              }}
+            >
+              <feature.icon
+                className="w-3.5 h-3.5"
+                style={{ color: "var(--color-accent-primary)" }}
+              />
+            </div>
+            <div>
+              <h3
+                className="font-medium text-sm"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                {feature.title}
+              </h3>
+              <p
+                className="text-sm"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                {feature.description}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Footer - pricing */}
