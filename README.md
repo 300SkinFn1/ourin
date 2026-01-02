@@ -1,4 +1,4 @@
-<img width="793" height="275" alt="ourin_banner" src="https://github.com/user-attachments/assets/b118fbc0-907d-4ea3-9845-9be434380a30" />
+<img width="1280" height="336" alt="ourin_banner" src="https://github.com/user-attachments/assets/b118fbc0-907d-4ea3-9845-9be434380a30" />
 
 https://github.com/user-attachments/assets/9d9c3c20-e3fd-47f2-a80e-7bf3889e88a8
 
