@@ -5,11 +5,7 @@ import { useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { FREE_MODEL_ID } from "@/lib/models";
-
-type TierInfo = {
-  tier: "anonymous" | "free" | "subscriber" | "self_hosted";
-  canSendMessage: boolean;
-};
+import type { TierInfo } from "@/convex/billing";
 
 /**
  * Hook that provides model access checking based on user tier.
@@ -18,10 +14,10 @@ type TierInfo = {
  */
 export function useModelAccess() {
   const { isAuthenticated } = useConvexAuth();
-  const tierInfo = useQuery(
+  const tierInfo: TierInfo | undefined = useQuery(
     api.billing.getUserTier,
     isAuthenticated ? {} : "skip"
-  ) as TierInfo | undefined;
+  );
 
   const canAccessAllModels = useMemo(() => {
     return tierInfo?.tier === "subscriber" || tierInfo?.tier === "self_hosted";
