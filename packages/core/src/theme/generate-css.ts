@@ -75,9 +75,11 @@ function deriveAllColors(
   const vars: string[] = [];
 
   // Background variations
-  const bgSecondary = isLight ? darken(background, 2) : lighten(background, 3);
+  const bgSecondary = isLight ? darken(background, 2) : darken(background, 0.5);
   const bgTertiary = isLight ? darken(background, 4) : lighten(background, 5);
   const bgElevated = isLight ? lighten(background, 2) : lighten(background, 4);
+  // Steps accordion uses lighter bg in dark mode for contrast against message area
+  const bgSteps = isLight ? darken(background, 2) : lighten(background, 3);
   // Hover/active colors incorporate accent for a subtle tint
   const bgHover = isLight
     ? darken(mix(background, accent, 0.92), 2)
@@ -94,6 +96,7 @@ function deriveAllColors(
   vars.push(`--color-background-input: ${bgInput};`);
   vars.push(`--color-background-hover: ${bgHover};`);
   vars.push(`--color-background-active: ${bgActive};`);
+  vars.push(`--color-background-steps: ${bgSteps};`);
 
   // Text variations
   const textSecondary = isLight ? lighten(text, 25) : darken(text, 20);

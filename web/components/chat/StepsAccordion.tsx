@@ -225,7 +225,7 @@ export function StepsAccordion({
   return (
     <div
       className="mb-4 rounded-sm overflow-hidden"
-      style={{ backgroundColor: "var(--color-background-secondary)" }}
+      style={{ backgroundColor: "var(--color-background-steps)" }}
     >
       {/* Header - only show if more than 2 steps */}
       {showHeader && (

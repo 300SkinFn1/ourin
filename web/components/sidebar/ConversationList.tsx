@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { MoreHorizontal, Pencil, Trash2, Star } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { cn, formatRelativeDate, groupBy } from "@/lib/utils";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip";
 
 interface ConversationListProps {
   currentConversationId: string | null;
@@ -41,8 +47,29 @@ export function ConversationList({
   >(currentConversationId);
   const [isHovering, setIsHovering] = useState(false);
   const [isExitingHover, setIsExitingHover] = useState(false);
-  const hoverEnterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isModifierHeld, setIsModifierHeld] = useState(false);
+  const [tooltipResetKey, setTooltipResetKey] = useState(0);
   const hoverLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoveredConvIdRef = useRef<string | null>(null);
+  const wasPreviewingRef = useRef(false);
+
+  // Detect platform for modifier key text
+  const modifierKey = useMemo(() => {
+    if (typeof navigator === "undefined") return "Ctrl";
+    return navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl";
+  }, []);
+
+  // Reset tooltip keys when preview ends to clear stale hover state
+  useEffect(() => {
+    const isPreviewing = isHovering || isExitingHover || isModifierHeld;
+
+    if (wasPreviewingRef.current && !isPreviewing) {
+      // Just exited preview, reset all tooltips
+      setTooltipResetKey((k) => k + 1);
+    }
+
+    wasPreviewingRef.current = isPreviewing;
+  }, [isHovering, isExitingHover, isModifierHeld]);
 
   // Sync committed ID when current changes from external navigation (e.g., URL change)
   useEffect(() => {
@@ -94,20 +121,72 @@ export function ConversationList({
     }
   }, [editingId]);
 
+  // Track modifier key (CMD on Mac, Ctrl on Windows) for preview mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        setIsModifierHeld(true);
+        // If already hovering over a conversation, start preview
+        if (hoveredConvIdRef.current && !menuOpenId && !editingId) {
+          setIsHovering(true);
+          onSelect(hoveredConvIdRef.current);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Check if both meta and ctrl are released
+      if (!e.metaKey && !e.ctrlKey) {
+        setIsModifierHeld(false);
+        // Restore committed conversation when modifier is released
+        if (isHovering && !isExitingHover) {
+          setIsExitingHover(true);
+          onSelect(committedConversationId);
+        }
+      }
+    };
+
+    // Also handle window blur (e.g., user switches apps while holding key)
+    const handleBlur = () => {
+      setIsModifierHeld(false);
+      if (isHovering && !isExitingHover) {
+        setIsExitingHover(true);
+        onSelect(committedConversationId);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [
+    isHovering,
+    isExitingHover,
+    committedConversationId,
+    menuOpenId,
+    editingId,
+    onSelect,
+  ]);
+
   // Cleanup hover timeouts on unmount
   useEffect(() => {
     return () => {
-      if (hoverEnterTimeoutRef.current) {
-        clearTimeout(hoverEnterTimeoutRef.current);
-      }
       if (hoverLeaveTimeoutRef.current) {
         clearTimeout(hoverLeaveTimeoutRef.current);
       }
     };
   }, []);
 
-  // Handle hover enter - preview conversation
+  // Handle hover enter - preview conversation (only when modifier key is held)
   const handleHoverEnter = (convId: string) => {
+    // Track hovered conversation for when modifier key is pressed
+    hoveredConvIdRef.current = convId;
+
     // Don't preview if menu is open or editing
     if (menuOpenId || editingId) return;
 
@@ -122,31 +201,22 @@ export function ConversationList({
       setIsExitingHover(false);
     }
 
-    // Clear any pending enter timeout
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-    }
+    // Only preview if modifier key (CMD/Ctrl) is held
+    if (!isModifierHeld) return;
 
-    // If already in hover/browse mode, switch instantly
+    // Preview immediately (no delay)
     if (isHovering) {
       onSelect(convId);
     } else {
-      // Require a brief pause before entering browse mode
-      // This prevents accidental triggers when moving through sidebar
-      hoverEnterTimeoutRef.current = setTimeout(() => {
-        setIsHovering(true);
-        onSelect(convId);
-      }, 150);
+      setIsHovering(true);
+      onSelect(convId);
     }
   };
 
   // Handle hover leave - restore committed conversation after delay
   const handleHoverLeave = () => {
-    // Clear pending enter
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-      hoverEnterTimeoutRef.current = null;
-    }
+    // Clear hovered ref
+    hoveredConvIdRef.current = null;
 
     // Clear any existing leave timeout
     if (hoverLeaveTimeoutRef.current) {
@@ -166,11 +236,7 @@ export function ConversationList({
 
   // Handle click - commit to this conversation
   const handleCommitSelect = (convId: string) => {
-    // Clear all pending timeouts
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-      hoverEnterTimeoutRef.current = null;
-    }
+    // Clear pending leave timeout
     if (hoverLeaveTimeoutRef.current) {
       clearTimeout(hoverLeaveTimeoutRef.current);
       hoverLeaveTimeoutRef.current = null;
@@ -275,196 +341,210 @@ export function ConversationList({
     const showSelectedStyle =
       isHovering || isExitingHover ? isCommitted : isActive;
 
+    // Disable tooltips during editing, preview mode, exiting preview, or modifier held
+    const tooltipsDisabled =
+      isEditing || isHovering || isExitingHover || isModifierHeld;
+
     return (
-      <div
-        key={conv._id}
-        role="button"
-        tabIndex={0}
-        className={cn(
-          "group relative flex items-center gap-2 px-2 py-2 rounded-sm cursor-pointer",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-1",
-          showSelectedStyle
-            ? "bg-[var(--color-background-active)]"
-            : "[&:hover:not(:has(button:hover))]:bg-[var(--color-background-hover)] [&:focus:not(:has(button:focus))]:bg-[var(--color-background-hover)]"
-        )}
-        onClick={() => !isEditing && handleCommitSelect(conv._id)}
-        onMouseEnter={() => !isEditing && handleHoverEnter(conv._id)}
-        onMouseLeave={handleHoverLeave}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (!isEditing) handleCommitSelect(conv._id);
-          }
-        }}
-      >
-        {isEditing ? (
-          <input
-            ref={editInputRef}
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
+      <Tooltip key={`${conv._id}-${tooltipResetKey}`}>
+        <TooltipTrigger asChild>
+          <div
+            role="button"
+            tabIndex={0}
+            className={cn(
+              "group relative flex items-center gap-2 px-2 py-2 rounded-sm cursor-pointer",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-1",
+              showSelectedStyle
+                ? "bg-[var(--color-background-active)]"
+                : "[&:hover:not(:has(button:hover))]:bg-[var(--color-background-hover)] [&:focus:not(:has(button:focus))]:bg-[var(--color-background-hover)]"
+            )}
+            onClick={() => !isEditing && handleCommitSelect(conv._id)}
+            onMouseEnter={() => !isEditing && handleHoverEnter(conv._id)}
+            onMouseLeave={handleHoverLeave}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSaveEdit(conv._id);
-              } else if (e.key === "Escape") {
-                handleCancelEdit();
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (!isEditing) handleCommitSelect(conv._id);
               }
             }}
-            onBlur={() => handleSaveEdit(conv._id)}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1 bg-[var(--color-background-input)] px-1 py-0.5 border border-[var(--color-border-focus)] rounded outline-none text-sm"
-            style={{ color: "var(--color-text-primary)" }}
-          />
-        ) : (
-          <>
-            <span
-              className="flex-1 text-sm truncate"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              {conv.title || "New conversation"}
-            </span>
-
-            {/* More button with fade */}
-            <div className="group/btn right-0 absolute inset-y-0 flex items-center pr-1">
-              <div
-                className={cn(
-                  "flex items-center",
-                  !isMenuOpen &&
-                    "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100 group-hover/btn:opacity-100"
-                )}
-              >
-                <button
-                  data-menu-button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpenId((prev) =>
-                      prev === conv._id ? null : conv._id
-                    );
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setMenuOpenId((prev) =>
-                        prev === conv._id ? null : conv._id
-                      );
-                    } else if (e.key === "Escape") {
-                      setMenuOpenId(null);
-                    }
-                  }}
-                  className="hover:bg-[var(--color-background-tertiary)] p-1.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)]"
-                  style={{
-                    backgroundColor: showSelectedStyle
-                      ? "var(--color-background-active)"
-                      : "var(--color-background-hover)",
-                  }}
-                  aria-label="Conversation options"
-                  aria-expanded={isMenuOpen}
-                  aria-haspopup="menu"
+          >
+            {isEditing ? (
+              <input
+                ref={editInputRef}
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSaveEdit(conv._id);
+                  } else if (e.key === "Escape") {
+                    handleCancelEdit();
+                  }
+                }}
+                onBlur={() => handleSaveEdit(conv._id)}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 bg-[var(--color-background-input)] px-1 py-0.5 border border-[var(--color-border-focus)] rounded outline-none text-sm"
+                style={{ color: "var(--color-text-primary)" }}
+              />
+            ) : (
+              <>
+                <span
+                  className="flex-1 text-sm truncate"
+                  style={{ color: "var(--color-text-primary)" }}
                 >
-                  <MoreHorizontal
-                    className="w-4 h-4 pointer-events-none"
-                    style={{ color: "var(--color-text-tertiary)" }}
-                  />
-                </button>
+                  {conv.title || "New conversation"}
+                </span>
 
-                {/* Dropdown menu */}
-                {isMenuOpen && (
+                {/* More button with fade */}
+                <div className="group/btn right-0 absolute inset-y-0 flex items-center pr-1">
                   <div
-                    data-dropdown-menu
-                    role="menu"
-                    className="top-full right-0 z-[9999] absolute shadow-xl mt-1 py-1 border rounded-sm min-w-[120px]"
-                    style={{
-                      backgroundColor: "var(--color-background-elevated)",
-                      borderColor: "var(--color-border-default)",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        e.stopPropagation();
-                        setMenuOpenId(null);
-                      }
-                    }}
+                    className={cn(
+                      "flex items-center",
+                      !isMenuOpen &&
+                        "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-focus:opacity-100 group-hover/btn:opacity-100"
+                    )}
                   >
                     <button
-                      role="menuitem"
-                      onClick={() => handleToggleFavorite(conv._id)}
-                      className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-sm transition-colors"
-                      style={{ color: "var(--color-text-primary)" }}
+                      data-menu-button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId((prev) =>
+                          prev === conv._id ? null : conv._id
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setMenuOpenId((prev) =>
+                            prev === conv._id ? null : conv._id
+                          );
+                        } else if (e.key === "Escape") {
+                          setMenuOpenId(null);
+                        }
+                      }}
+                      className="hover:bg-[var(--color-background-tertiary)] p-1.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)]"
+                      style={{
+                        backgroundColor: showSelectedStyle
+                          ? "var(--color-background-active)"
+                          : "var(--color-background-hover)",
+                      }}
+                      aria-label="Conversation options"
+                      aria-expanded={isMenuOpen}
+                      aria-haspopup="menu"
                     >
-                      <Star
-                        className={cn(
-                          "w-4 h-4",
-                          conv.isFavorite && "fill-current"
-                        )}
-                        style={{
-                          color: conv.isFavorite
-                            ? "var(--color-accent-primary)"
-                            : "currentColor",
-                        }}
+                      <MoreHorizontal
+                        className="w-4 h-4 pointer-events-none"
+                        style={{ color: "var(--color-text-tertiary)" }}
                       />
-                      {conv.isFavorite ? "Unfavorite" : "Favorite"}
                     </button>
-                    <button
-                      role="menuitem"
-                      onClick={() => handleStartEdit(conv)}
-                      className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-sm transition-colors"
-                      style={{ color: "var(--color-text-primary)" }}
-                    >
-                      <Pencil className="w-4 h-4" />
-                      Rename
-                    </button>
-                    <button
-                      role="menuitem"
-                      onClick={() => handleDelete(conv._id)}
-                      className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-red-500 text-sm transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
+
+                    {/* Dropdown menu */}
+                    {isMenuOpen && (
+                      <div
+                        data-dropdown-menu
+                        role="menu"
+                        className="top-full right-0 z-[9999] absolute shadow-xl mt-1 py-1 border rounded-sm min-w-[120px]"
+                        style={{
+                          backgroundColor: "var(--color-background-elevated)",
+                          borderColor: "var(--color-border-default)",
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            e.stopPropagation();
+                            setMenuOpenId(null);
+                          }
+                        }}
+                      >
+                        <button
+                          role="menuitem"
+                          onClick={() => handleToggleFavorite(conv._id)}
+                          className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-sm transition-colors"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
+                          <Star
+                            className={cn(
+                              "w-4 h-4",
+                              conv.isFavorite && "fill-current"
+                            )}
+                            style={{
+                              color: conv.isFavorite
+                                ? "var(--color-accent-primary)"
+                                : "currentColor",
+                            }}
+                          />
+                          {conv.isFavorite ? "Unfavorite" : "Favorite"}
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => handleStartEdit(conv)}
+                          className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-sm transition-colors"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Rename
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => handleDelete(conv._id)}
+                          className="flex items-center gap-2 hover:bg-[var(--color-background-hover)] focus:bg-[var(--color-background-hover)] px-3 py-1.5 focus:outline-none w-full text-red-500 text-sm transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          </>
+                </div>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        {!tooltipsDisabled && (
+          <TooltipContent side="right">
+            Hold {modifierKey} to preview
+          </TooltipContent>
         )}
-      </div>
+      </Tooltip>
     );
   };
 
   return (
-    <div className="space-y-4" onMouseLeave={handleHoverLeave}>
-      {/* Favorites section */}
-      {favorites.length > 0 && (
-        <div>
-          <div
-            className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-widest"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            Favorites
+    <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+      <div className="space-y-4" onMouseLeave={handleHoverLeave}>
+        {/* Favorites section */}
+        {favorites.length > 0 && (
+          <div>
+            <div
+              className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-widest"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Favorites
+            </div>
+            <div className="space-y-0.5">
+              {favorites.map(renderConversationItem)}
+            </div>
           </div>
-          <div className="space-y-0.5">
-            {favorites.map(renderConversationItem)}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Regular conversations grouped by date */}
-      {orderedGroupsFiltered.map((group) => (
-        <div key={group}>
-          {/* Group header */}
-          <div
-            className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-widest"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            {group}
-          </div>
+        {/* Regular conversations grouped by date */}
+        {orderedGroupsFiltered.map((group) => (
+          <div key={group}>
+            {/* Group header */}
+            <div
+              className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-widest"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              {group}
+            </div>
 
-          {/* Conversations in group */}
-          <div className="space-y-0.5">
-            {grouped[group].map(renderConversationItem)}
+            {/* Conversations in group */}
+            <div className="space-y-0.5">
+              {grouped[group].map(renderConversationItem)}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }
