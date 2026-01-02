@@ -510,7 +510,7 @@ export function ConversationList({
   };
 
   return (
-    <TooltipProvider delayDuration={500}>
+    <TooltipProvider delayDuration={500} skipDelayDuration={0}>
       <div className="space-y-4" onMouseLeave={handleHoverLeave}>
         {/* Favorites section */}
         {favorites.length > 0 && (
