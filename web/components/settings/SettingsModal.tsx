@@ -90,11 +90,19 @@ const SUBSCRIPTION_FEATURES = [
   },
 ];
 
+// Format price from cents to display string (e.g., 1000 -> "$10")
+function formatPrice(cents: number): string {
+  const dollars = cents / 100;
+  return dollars % 1 === 0 ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}
+
 // Left side pricing panel component
 function PricingPanel({
   variant,
+  priceCents,
 }: {
   variant: "signUp" | "signIn" | "subscribe";
+  priceCents: number;
 }) {
   const isSignIn = variant === "signIn";
 
@@ -154,7 +162,7 @@ function PricingPanel({
               className="font-bold text-3xl"
               style={{ color: "var(--color-accent-primary)" }}
             >
-              $10
+              {formatPrice(priceCents)}
             </span>
             <span
               className="text-base"
@@ -175,7 +183,13 @@ function PricingPanel({
 }
 
 // Subscribe panel for signed-in non-subscribers
-function SubscribePanel({ onClose }: { onClose: () => void }) {
+function SubscribePanel({
+  onClose,
+  priceCents,
+}: {
+  onClose: () => void;
+  priceCents: number;
+}) {
   const { signOut } = useAuthActions();
   const analytics = useAnalytics();
   const generateChatToken = useMutation(api.chatAuth.generateChatToken);
@@ -263,7 +277,7 @@ function SubscribePanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <CreditCard className="w-4 h-4" />
-                Subscribe - $10/month
+                Subscribe - {formatPrice(priceCents)}/month
               </>
             )}
           </button>
@@ -330,6 +344,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const generateChatToken = useMutation(api.chatAuth.generateChatToken);
   const analytics = useAnalytics();
   const [isRedirectingToStripe, setIsRedirectingToStripe] = useState(false);
+
+  // Subscription price from billing config (fallback to $10 = 1000 cents)
+  const [subscriptionPriceCents, setSubscriptionPriceCents] = useState(1000);
+
+  // Fetch billing config to get dynamic subscription price
+  useEffect(() => {
+    if (!isOpen || IS_SELF_HOSTING_CLIENT) return;
+
+    const fetchBillingConfig = async () => {
+      try {
+        const response = await fetch("/api/billing/config");
+        if (!response.ok) return;
+        const config = await response.json();
+        if (config.subscriptionPriceCents && isMountedRef.current) {
+          setSubscriptionPriceCents(config.subscriptionPriceCents);
+        }
+      } catch {
+        // Silently fail - use fallback price
+      }
+    };
+    fetchBillingConfig();
+  }, [isOpen]);
 
   // Track mounted state to prevent state updates after unmount
   useEffect(() => {
@@ -448,7 +484,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           }}
         >
           {/* Left side - Pricing/Welcome panel */}
-          <PricingPanel variant={authFlow === "signIn" ? "signIn" : "signUp"} />
+          <PricingPanel
+            variant={authFlow === "signIn" ? "signIn" : "signUp"}
+            priceCents={subscriptionPriceCents}
+          />
 
           {/* Right side - Auth form or redirecting state */}
           <div className="relative flex flex-col flex-1">
@@ -510,10 +549,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           }}
         >
           {/* Left side - Pricing panel */}
-          <PricingPanel variant="subscribe" />
+          <PricingPanel
+            variant="subscribe"
+            priceCents={subscriptionPriceCents}
+          />
 
           {/* Right side - Subscribe button + logout */}
-          <SubscribePanel onClose={onClose} />
+          <SubscribePanel
+            onClose={onClose}
+            priceCents={subscriptionPriceCents}
+          />
         </div>
       </div>
     );
