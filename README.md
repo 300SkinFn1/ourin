@@ -13,8 +13,8 @@ https://github.com/user-attachments/assets/9d9c3c20-e3fd-47f2-a80e-7bf3889e88a8
 
 - Image Gen
 - Mobile app
-- Semantic Search over full chat contents
 - Superpowered web search / deep research (parallel.ai and/or exa.ai)
+- Semantic Search over full chat contents
 - More models
 - Memories
 - Automation
