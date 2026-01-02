@@ -41,8 +41,9 @@ export function ConversationList({
   >(currentConversationId);
   const [isHovering, setIsHovering] = useState(false);
   const [isExitingHover, setIsExitingHover] = useState(false);
-  const hoverEnterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isModifierHeld, setIsModifierHeld] = useState(false);
   const hoverLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoveredConvIdRef = useRef<string | null>(null);
 
   // Sync committed ID when current changes from external navigation (e.g., URL change)
   useEffect(() => {
@@ -94,20 +95,72 @@ export function ConversationList({
     }
   }, [editingId]);
 
+  // Track modifier key (CMD on Mac, Ctrl on Windows) for preview mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        setIsModifierHeld(true);
+        // If already hovering over a conversation, start preview
+        if (hoveredConvIdRef.current && !menuOpenId && !editingId) {
+          setIsHovering(true);
+          onSelect(hoveredConvIdRef.current);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Check if both meta and ctrl are released
+      if (!e.metaKey && !e.ctrlKey) {
+        setIsModifierHeld(false);
+        // Restore committed conversation when modifier is released
+        if (isHovering && !isExitingHover) {
+          setIsExitingHover(true);
+          onSelect(committedConversationId);
+        }
+      }
+    };
+
+    // Also handle window blur (e.g., user switches apps while holding key)
+    const handleBlur = () => {
+      setIsModifierHeld(false);
+      if (isHovering && !isExitingHover) {
+        setIsExitingHover(true);
+        onSelect(committedConversationId);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [
+    isHovering,
+    isExitingHover,
+    committedConversationId,
+    menuOpenId,
+    editingId,
+    onSelect,
+  ]);
+
   // Cleanup hover timeouts on unmount
   useEffect(() => {
     return () => {
-      if (hoverEnterTimeoutRef.current) {
-        clearTimeout(hoverEnterTimeoutRef.current);
-      }
       if (hoverLeaveTimeoutRef.current) {
         clearTimeout(hoverLeaveTimeoutRef.current);
       }
     };
   }, []);
 
-  // Handle hover enter - preview conversation
+  // Handle hover enter - preview conversation (only when modifier key is held)
   const handleHoverEnter = (convId: string) => {
+    // Track hovered conversation for when modifier key is pressed
+    hoveredConvIdRef.current = convId;
+
     // Don't preview if menu is open or editing
     if (menuOpenId || editingId) return;
 
@@ -122,31 +175,22 @@ export function ConversationList({
       setIsExitingHover(false);
     }
 
-    // Clear any pending enter timeout
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-    }
+    // Only preview if modifier key (CMD/Ctrl) is held
+    if (!isModifierHeld) return;
 
-    // If already in hover/browse mode, switch instantly
+    // Preview immediately (no delay)
     if (isHovering) {
       onSelect(convId);
     } else {
-      // Require a brief pause before entering browse mode
-      // This prevents accidental triggers when moving through sidebar
-      hoverEnterTimeoutRef.current = setTimeout(() => {
-        setIsHovering(true);
-        onSelect(convId);
-      }, 150);
+      setIsHovering(true);
+      onSelect(convId);
     }
   };
 
   // Handle hover leave - restore committed conversation after delay
   const handleHoverLeave = () => {
-    // Clear pending enter
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-      hoverEnterTimeoutRef.current = null;
-    }
+    // Clear hovered ref
+    hoveredConvIdRef.current = null;
 
     // Clear any existing leave timeout
     if (hoverLeaveTimeoutRef.current) {
@@ -166,11 +210,7 @@ export function ConversationList({
 
   // Handle click - commit to this conversation
   const handleCommitSelect = (convId: string) => {
-    // Clear all pending timeouts
-    if (hoverEnterTimeoutRef.current) {
-      clearTimeout(hoverEnterTimeoutRef.current);
-      hoverEnterTimeoutRef.current = null;
-    }
+    // Clear pending leave timeout
     if (hoverLeaveTimeoutRef.current) {
       clearTimeout(hoverLeaveTimeoutRef.current);
       hoverLeaveTimeoutRef.current = null;
