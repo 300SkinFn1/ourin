@@ -236,7 +236,10 @@ export function RegenerateConfigPopover({
       {/* Two-column layout */}
       <div className="flex max-h-[320px]">
         {/* Models column (left) */}
-        <div style={{ borderRight: "1px solid var(--color-border-muted)" }}>
+        <div
+          className="flex-1 min-w-0 overflow-y-auto"
+          style={{ borderRight: "1px solid var(--color-border-muted)" }}
+        >
           <ModelList
             selectedModel={selectedModel}
             onSelect={handleModelSelect}
@@ -249,7 +252,7 @@ export function RegenerateConfigPopover({
         </div>
 
         {/* Cores column (right) */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-hidden">
           <CoreList
             cores={cores}
             search={search}

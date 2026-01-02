@@ -211,6 +211,7 @@ export function ModelCoresDropdown({
             <div className="flex max-h-[400px]">
               {/* Models column (left) */}
               <div
+                className="flex-1 min-w-0 overflow-y-auto"
                 style={{ borderRight: "1px solid var(--color-border-muted)" }}
               >
                 <ModelList
@@ -224,7 +225,7 @@ export function ModelCoresDropdown({
               </div>
 
               {/* Cores column (right) */}
-              <div className="flex flex-col flex-1 min-w-0">
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                 <CoreList
                   cores={cores}
                   search={search}

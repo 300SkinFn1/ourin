@@ -82,7 +82,7 @@ export function CoreList({
   const isDraggable = !!onReorder;
 
   return (
-    <div className="flex-1 space-y-0.5 p-1.5 overflow-y-auto">
+    <div className="flex-1 space-y-0.5 p-1.5 overflow-y-auto min-h-0">
       <div
         className="flex items-center gap-1.5 px-2.5 py-1 font-medium text-xs uppercase tracking-wider"
         style={{ color: "var(--color-text-muted)" }}

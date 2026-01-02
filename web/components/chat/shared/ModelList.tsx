@@ -57,7 +57,7 @@ export function ModelList({
   };
 
   return (
-    <div className="flex-1 p-1.5 min-w-0 overflow-y-auto">
+    <div className="p-1.5">
       <div
         className="px-2.5 py-1 font-medium text-xs uppercase tracking-wider"
         style={{ color: "var(--color-text-muted)" }}
