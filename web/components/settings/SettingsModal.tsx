@@ -1,17 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, ReactNode, useMemo } from "react";
-import {
-  X,
-  CreditCard,
-  Key,
-  Keyboard,
-  LogOut,
-  Loader2,
-  Sparkles,
-  Infinity as InfinityIcon,
-  Zap,
-} from "lucide-react";
+import { X, CreditCard, Key, Keyboard, LogOut, Loader2 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -83,22 +73,18 @@ export function SettingsDivider() {
 // Pricing features for the left side panel (sign-up / subscribe)
 const SUBSCRIPTION_FEATURES = [
   {
-    icon: Sparkles,
     title: "Premium Models",
     description: "The best GPT, Claude, and Gemini models in one place",
   },
   {
-    icon: InfinityIcon,
     title: "Generous Monthly Limit",
     description: "Generous monthly credit allowance, buy more anytime",
   },
   {
-    icon: Zap,
     title: "Premium Features",
     description: "Web search, image uploads, theme and font customization",
   },
   {
-    icon: Key,
     title: "BYOK Support",
     description: "Use your own API keys to bypass credit usage",
   },
@@ -144,34 +130,18 @@ function PricingPanel({
       </div>
 
       {/* Features list */}
-      <div className="z-10 relative space-y-5">
+      <div className="z-10 relative space-y-4">
         {SUBSCRIPTION_FEATURES.map((feature) => (
-          <div key={feature.title} className="flex items-start gap-3">
-            <div
-              className="flex flex-shrink-0 justify-center items-center mt-0.5 rounded w-6 h-6"
-              style={{
-                backgroundColor: "var(--color-accent-primary-muted)",
-              }}
+          <div key={feature.title}>
+            <h3
+              className="font-medium text-sm"
+              style={{ color: "var(--color-text-primary)" }}
             >
-              <feature.icon
-                className="w-3.5 h-3.5"
-                style={{ color: "var(--color-accent-primary)" }}
-              />
-            </div>
-            <div>
-              <h3
-                className="font-medium text-sm"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {feature.title}
-              </h3>
-              <p
-                className="text-sm"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                {feature.description}
-              </p>
-            </div>
+              {feature.title}
+            </h3>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+              {feature.description}
+            </p>
           </div>
         ))}
       </div>
