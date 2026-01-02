@@ -151,7 +151,7 @@ export function ChatArea({
     }
 
     return { canSend: true, reason: null };
-  }, [isAuthenticated, tierInfo, selectedModel, modelInfo]);
+  }, [isAuthenticated, tierInfo, selectedModel]);
 
   // persist user tier to cookie when it changes (for preventing flash on reload)
   useEffect(() => {

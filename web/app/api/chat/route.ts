@@ -163,9 +163,9 @@ async function fetchFileAsBase64(url: string): Promise<string> {
 
 // build web search tools based on provider
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildWebSearchTools(
   provider: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web search tools have dynamic structure per provider
 ): Record<string, any> | undefined {
   // note: web search tools require newer sDK versions that may not have typeScript types yet
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

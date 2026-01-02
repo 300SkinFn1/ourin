@@ -406,6 +406,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
           textarea.setSelectionRange(len, len);
         }
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- only restore draft on conversation change, not when initialDraft prop changes
     }, [conversationId]);
 
     // trigger auto-send when text is loaded and shouldAutoSend is true
