@@ -48,14 +48,28 @@ export function ConversationList({
   const [isHovering, setIsHovering] = useState(false);
   const [isExitingHover, setIsExitingHover] = useState(false);
   const [isModifierHeld, setIsModifierHeld] = useState(false);
+  const [tooltipResetKey, setTooltipResetKey] = useState(0);
   const hoverLeaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hoveredConvIdRef = useRef<string | null>(null);
+  const wasPreviewingRef = useRef(false);
 
   // Detect platform for modifier key text
   const modifierKey = useMemo(() => {
     if (typeof navigator === "undefined") return "Ctrl";
     return navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl";
   }, []);
+
+  // Reset tooltip keys when preview ends to clear stale hover state
+  useEffect(() => {
+    const isPreviewing = isHovering || isExitingHover || isModifierHeld;
+
+    if (wasPreviewingRef.current && !isPreviewing) {
+      // Just exited preview, reset all tooltips
+      setTooltipResetKey((k) => k + 1);
+    }
+
+    wasPreviewingRef.current = isPreviewing;
+  }, [isHovering, isExitingHover, isModifierHeld]);
 
   // Sync committed ID when current changes from external navigation (e.g., URL change)
   useEffect(() => {
@@ -327,11 +341,12 @@ export function ConversationList({
     const showSelectedStyle =
       isHovering || isExitingHover ? isCommitted : isActive;
 
+    // Disable tooltips during editing, preview mode, exiting preview, or modifier held
+    const tooltipsDisabled =
+      isEditing || isHovering || isExitingHover || isModifierHeld;
+
     return (
-      <Tooltip
-        key={conv._id}
-        open={isEditing || isHovering ? false : undefined}
-      >
+      <Tooltip key={`${conv._id}-${tooltipResetKey}`}>
         <TooltipTrigger asChild>
           <div
             role="button"
@@ -485,9 +500,11 @@ export function ConversationList({
             )}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="right">
-          Hold {modifierKey} to preview
-        </TooltipContent>
+        {!tooltipsDisabled && (
+          <TooltipContent side="right">
+            Hold {modifierKey} to preview
+          </TooltipContent>
+        )}
       </Tooltip>
     );
   };
