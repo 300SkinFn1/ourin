@@ -1,4 +1,4 @@
-import { streamText, CoreMessage } from "ai";
+import { streamText, ModelMessage } from "ai";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -301,8 +301,8 @@ async function convertMessages(
     }>;
   }>,
   provider: string
-): Promise<CoreMessage[]> {
-  const converted: CoreMessage[] = [];
+): Promise<ModelMessage[]> {
+  const converted: ModelMessage[] = [];
 
   for (const msg of messages) {
     // for assistant messages, just extract text
